@@ -1,0 +1,5 @@
+---
+- name: Delete database cluster firewall
+  hetzner.hcloud.firewall:
+    name: "{{ db_cluster_firewall_name }}"
+    state: absent

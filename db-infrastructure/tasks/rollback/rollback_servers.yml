@@ -1,0 +1,11 @@
+---
+- name: Delete all database servers
+  hetzner.hcloud.server:
+    name: "{{ db_server_name }}-{{ item }}"
+    state: absent
+    force: true
+  loop: "{{ range(1, db_server_count | int + 1) | list }}"
+
+- name: Wait for servers to be deleted
+  pause:
+    seconds: 10

@@ -1,0 +1,13 @@
+---
+- name: Delete subnetwork
+  hetzner.hcloud.subnetwork:
+    network: "{{ db_network_name }}"
+    ip_range: "{{ db_network_ip_range }}"
+    network_zone: "{{ db_network_zone }}"
+    type: cloud
+    state: absent
+
+- name: Delete network
+  hetzner.hcloud.network:
+    name: "{{ db_network_name }}"
+    state: absent
