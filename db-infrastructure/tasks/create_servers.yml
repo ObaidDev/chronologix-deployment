@@ -9,5 +9,7 @@
     enable_ipv6: false
     private_networks : 
       - "{{ db_network_name }}"
+    firewalls : 
+      - "{{ db_cluster_firewall_name }}"
     state: present
   loop: "{{ range(1, db_server_count | int + 1) | list }}"
