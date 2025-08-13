@@ -1,0 +1,7 @@
+---
+# tasks file for db-infrastructure
+
+- name: include the tasks of db-infrastructure.
+  block:
+    - include_tasks: create_private_network.yml
+    - include_tasks: create_servers.yml

@@ -1,0 +1,14 @@
+---
+- name: Create a network
+  hetzner.hcloud.network:
+    name: "{{ db_network_name }}"
+    ip_range: "{{ db_network_ip_range }}"
+    state: present
+
+- name: Create a subnetwork
+  hetzner.hcloud.subnetwork:
+    network: "{{ db_network_name }}"
+    ip_range: "{{ db_network_ip_range }}"
+    network_zone: "{{ db_network_zone }}"
+    type: cloud
+    state: present

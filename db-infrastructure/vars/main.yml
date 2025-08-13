@@ -1,0 +1,22 @@
+---
+# vars file for db-infrastructure
+
+############### https://hetzner.com/ cloud configuration ##################
+
+hcloud_token: "{{ lookup('env','HCLOUD_TOKEN') }}"
+hcloud_image: "{{ lookup('env','HCLOUD_IMAGE') | default('debian-12') }}"
+hcloud_location: "{{ lookup('env','HCLOUD_REGION') | default('fsn1') }}"
+
+
+############## Network Configuration ##################
+
+db_network_name: "{{ lookup('env','DB_NETWORK_NAME') | default('db-network') }}"
+db_network_ip_range: "{{ lookup('env','DB_NETWORK_IP_RANGE') | default('10.0.0.0/16') }}"
+db_network_zone : "{{ lookup('env','NETWORK_ZONE') | default('eu-central') }}"
+
+
+################ DB Server configuration ##################
+
+db_server_count : "{{ lookup('env','DB_SERVER_COUNT') | default(1) }}"
+db_server_name : "{{ lookup('env','DB_SERVER_NAME') | default('db-server') }}"
+db_server_type: "{{ lookup('env','DB_SERVER_TYPE') | default('cx22') }}"

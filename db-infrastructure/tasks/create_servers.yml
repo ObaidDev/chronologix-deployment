@@ -1,0 +1,13 @@
+---
+- name: Create servers without public IPs
+  hetzner.hcloud.server:
+    name: "{{ db_server_name }}-{{ item }}"
+    server_type: "{{ db_server_type }}"
+    image: "{{ hcloud_image }}"
+    location: "{{ hcloud_location }}"
+    enable_ipv4: false
+    enable_ipv6: false
+    private_networks : 
+      - "{{ db_network_name }}"
+    state: present
+  loop: "{{ range(1, db_server_count | int + 1) | list }}"
