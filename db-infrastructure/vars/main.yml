@@ -18,3 +18,16 @@ db_network_zone: "{{ lookup('env','NETWORK_ZONE') | default('eu-central', true) 
 db_server_count: "{{ lookup('env','DB_SERVER_COUNT') | default(1, true) }}"
 db_server_name: "{{ lookup('env','DB_SERVER_NAME') | default('db-server', true) }}"
 db_server_type: "{{ lookup('env','DB_SERVER_TYPE') | default('cx22', true) }}"
+
+db_port: "{{ lookup('env','DB_PORT') | default('5432', true) }}"
+db_replication_port: "{{ lookup('env','DB_REPLICATION_PORT') | default('5433', true) }}"
+db_monitoring_port: "{{ lookup('env','DB_MONITORING_PORT') | default('9100', true) }}"
+db_custom_port: "{{ lookup('env','DB_CUSTOM_PORT') | default('8080', true) }}"
+
+
+############## Firewall Configuration ##################
+db_cluster_firewall_name: "{{ lookup('env','DB_CLUSTER_FIREWALL_NAME') | default('db-cluster-firewall', true) }}"
+
+############## Network Access Configuration ##################
+app_network_ip_range: "{{ lookup('env','APP_NETWORK_IP_RANGE') | default('10.1.0.0/16', true) }}"
+monitoring_network_ip_range: "{{ lookup('env','MONITORING_NETWORK_IP_RANGE') | default('10.2.0.0/24', true) }}"
