@@ -1,0 +1,50 @@
+---
+
+# Create single firewall for (master and workers) servers
+
+- name: Create firewall for DB cluster
+  hetzner.hcloud.firewall:
+    name: "{{ db_cluster_firewall_name }}"
+    labels:
+      role: "db-cluster"
+    rules:
+      # SSH access
+      - direction: in
+        port: "22"
+        protocol: tcp
+        source_ips:
+          - "0.0.0.0/0"
+          - "::/0"
+
+      # Database port
+      - direction: in
+        port: "{{ db_port }}"  # 5432 for PostgreSQL, 3306 for MySQL
+        protocol: tcp
+        source_ips:
+          - "{{ db_network_ip_range }}"  # Internal cluster communication
+          # - "{{ app_network_ip_range }}"  # Application access
+
+      
+      # Database replication port
+      # - direction: in
+      #   port: "{{ db_replication_port | default('5433') }}"
+      #   protocol: tcp
+      #   source_ips:
+      #     - "{{ db_network_ip_range }}"  # Only cluster members can replicate
+
+
+      # Health check/monitoring port
+      - direction: in
+        port: "{{ db_monitoring_port }}"
+        protocol: tcp
+        source_ips:
+          - "{{ monitoring_network_ip_range }}"
+
+
+      - direction: in
+        port: "{{ db_custom_port }}"
+        protocol: tcp
+        source_ips:
+          - "{{ app_network_ip_range }}"
+        
+    state: present
