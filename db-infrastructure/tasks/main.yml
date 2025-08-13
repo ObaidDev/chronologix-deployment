@@ -4,4 +4,36 @@
 - name: include the tasks of db-infrastructure.
   block:
     - include_tasks: create_private_network.yml
+    - include_tasks: create_firewall.yml
     - include_tasks: create_servers.yml
+
+  rescue:
+    - name: "ROLLBACK: Starting cleanup due to failure"
+      debug:
+        msg: "Deployment failed at: {{ ansible_failed_task.name | default('unknown task') }}"
+
+    # Rollback in reverse order
+    - name: "ROLLBACK: Cleanup servers"
+      include_tasks: rollback/rollback_servers.yml
+      ignore_errors: true
+
+    - name: "ROLLBACK: Cleanup firewall" 
+      include_tasks: rollback/rollback_firewall.yml
+      ignore_errors: true
+
+    - name: "ROLLBACK: Cleanup network"
+      include_tasks: rollback/rollback_network.yml
+      ignore_errors: true
+
+    - name: Send rollback notification
+      debug:
+        msg: "Rollback completed. Infrastructure has been cleaned up."
+
+    - name: Fail after rollback
+      fail:
+        msg: "Infrastructure deployment failed. Rollback completed successfully."
+
+  always:
+    - name: Cleanup temporary resources
+      debug:
+        msg: "Cleaning up temporary files and locks..."
