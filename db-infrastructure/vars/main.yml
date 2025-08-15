@@ -13,6 +13,13 @@ db_network_name: "{{ lookup('env','DB_NETWORK_NAME') | default('db-network', tru
 db_network_ip_range: "{{ lookup('env','DB_NETWORK_IP_RANGE') | default('10.0.0.0/16', true) }}"
 db_network_zone: "{{ lookup('env','NETWORK_ZONE') | default('eu-central', true) }}"
 
+
+chronologix_network_subnet_1_name : "{{ lookup('env','NETWORK_SUBNET_1_NAME') | default('chronologix-subnet-1', true) }}"
+chronologix_network_subnet_2_name : "{{ lookup('env','NETWORK_SUBNET_2_NAME') | default('chronologix-subnet-2', true) }}"
+chronologix_network_subnet_1_ip_range : "{{ lookup('env','NETWORK_SUBNET_1') | default('10.0.1.0/24', true) }}"
+chronologix_network_subnet_2_ip_range : "{{ lookup('env','NETWORK_SUBNET_2') | default('10.0.2.0/24', true) }}"
+
+
 ################ DB Server configuration ##################
 
 db_server_count: "{{ lookup('env','DB_SERVER_COUNT') | default(1, true) }}"
@@ -31,3 +38,9 @@ db_cluster_firewall_name: "{{ lookup('env','DB_CLUSTER_FIREWALL_NAME') | default
 ############## Network Access Configuration ##################
 app_network_ip_range: "{{ lookup('env','APP_NETWORK_IP_RANGE') | default('10.1.0.0/16', true) }}"
 monitoring_network_ip_range: "{{ lookup('env','MONITORING_NETWORK_IP_RANGE') | default('10.2.0.0/24', true) }}"
+
+
+
+############# SSH Key Configuration ##################
+
+ssh_keys: "{{ lookup('env', 'HETZNER_SSH_KEYS_JSON') | from_json }}"
