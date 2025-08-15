@@ -1,2 +1,18 @@
 ---
 # defaults file for db-citus
+
+postgresql_version: "17"
+citus_version: "13.0"
+postgresql_port: 5432
+citus_database: "postgres"
+
+# Network configuration
+postgresql_listen_addresses: "*"
+postgresql_trusted_networks:
+  - "10.0.0.0/8"
+  - "127.0.0.1/32"
+  - "::1/128"
+
+# Service management
+postgresql_service_name: "postgresql"
+postgresql_auto_start: true
