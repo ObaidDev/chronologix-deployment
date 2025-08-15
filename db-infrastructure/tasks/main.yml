@@ -5,6 +5,7 @@
   block:
     - include_tasks: create_private_network.yml
     - include_tasks: create_firewall.yml
+    - include_tasks: create_ssh_keys.yml
     - include_tasks: create_servers.yml
 
   rescue:
