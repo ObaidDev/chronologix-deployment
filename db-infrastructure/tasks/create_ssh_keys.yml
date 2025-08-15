@@ -1,0 +1,7 @@
+---
+- name: Create SSH keys
+  hetzner.hcloud.ssh_key:
+    name: "{{ item.name }}"
+    public_key: "{{ lookup('file', item.path) }}"
+    state: present
+  loop: "{{ ssh_keys }}"
