@@ -1,0 +1,26 @@
+---
+
+- name: Add Citus repository key and repository
+  shell: |
+    curl https://install.citusdata.com/community/deb.sh | sudo bash
+  args:
+    creates: /etc/apt/sources.list.d/citusdata_community.list
+  become: true
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+  become: true
+
+- name: Install PostgreSQL with Citus extension
+  apt:
+    name: "postgresql-{{ postgresql_version }}-citus-{{ citus_version }}"
+    state: present
+  become: true
+  notify: restart postgresql
+
+- name: Ensure PostgreSQL is stopped before configuration
+  systemd:
+    name: "{{ postgresql_service_name }}"
+    state: stopped
+  become: true
