@@ -1,5 +1,10 @@
 ---
 
+
+- name: Show simple message
+  debug:
+    msg: "Installing PostgreSQL and Citus"
+
 - name: Add Citus repository
   shell: curl https://install.citusdata.com/community/deb.sh | bash
   args:
