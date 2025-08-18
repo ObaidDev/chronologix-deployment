@@ -1,6 +1,7 @@
 ---
 # tasks file for db-infrastructure
 
+
 - name: include the tasks of db-infrastructure.
   block:
     - include_tasks: create_private_network.yml
@@ -8,6 +9,10 @@
     - include_tasks: create_ssh_keys.yml
     - include_tasks: create_servers.yml
 
+
+  ############################################
+  #     ROLLBACK IF THERE IS ANY ISSUE       #
+  ############################################
   rescue:
     - name: "ROLLBACK: Starting cleanup due to failure"
       debug:
