@@ -1,25 +1,22 @@
-# roles/citusdb/tasks/coordinator.yml
 ---
-- name: Set coordinator host information
-  postgresql_query:
-    db: "{{ citus_database }}"
-    port: "{{ postgresql_port }}"
-    query: "SELECT citus_set_coordinator_host('{{ ansible_fqdn }}', {{ postgresql_port }});"
-  become: true
+- name: Set coordinator host
   become_user: postgres
-
-- name: Add worker nodes to coordinator
   postgresql_query:
-    db: "{{ citus_database }}"
-    port: "{{ postgresql_port }}"
-    query: "SELECT * from citus_add_node('{{ hostvars[item]['ansible_fqdn'] }}', {{ postgresql_port }});"
-  become: true
-  become_user: postgres
-  loop: "{{ groups['citus_nodes'] }}"
-  when: 
-    - groups['citus_nodes'] is defined
-    - groups['citus_nodes'] | length > 0
+    query: "SELECT citus_set_coordinator_host('{{ ansible_hostname }}', {{ postgres_port }});"
+    db: postgres
 
-- name: Wait for worker nodes to be registered
-  pause:
-    seconds: 5
+
+- name: Add worker nodes
+  become_user: postgres
+  postgresql_query:
+    query: "SELECT * FROM citus_add_node('{{ item.host }}', {{ item.port }});"
+    db: postgres
+  loop: "{{ worker_nodes }}"
+
+
+
+- name: Verify worker nodes
+  become_user: postgres
+  postgresql_query:
+    query: "SELECT * FROM citus_get_active_worker_nodes();"
+    db: postgres

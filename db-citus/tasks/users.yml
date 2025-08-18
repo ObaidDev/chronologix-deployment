@@ -1,0 +1,9 @@
+---
+- name: Ensure PostgreSQL users exist
+  postgresql_user:
+    name: "{{ item.name }}"
+    password: "{{ item.password }}"
+    role_attr_flags: "{{ item.role_attr_flags }}"
+    state: present
+  loop: "{{ pg_users }}"
+  become_user: postgres

@@ -1,49 +1,21 @@
 ---
-- name: Configure shared_preload_libraries for Citus
-  shell: |
-    sudo pg_conftool {{ postgresql_version }} main set shared_preload_libraries citus
-  become: true
-  notify: restart postgresql
+- name: Configure pg_hba.conf for allowed networks
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    line: "host    all             all             {{ item }}              trust"
+    state: present
+  loop: "{{ pg_allowed_networks }}"
 
-- name: Configure PostgreSQL to listen on all addresses
-  shell: |
-    sudo pg_conftool {{ postgresql_version }} main set listen_addresses '{{ postgresql_listen_addresses }}'
-  become: true
-  notify: restart postgresql
 
-# - name: Configure PostgreSQL port
-#   shell: |
-#     sudo pg_conftool {{ postgresql_version }} main set port {{ postgresql_port }}
-#   become: true
-#   notify: restart postgresql
+- name: Restart PostgreSQL
+  service:
+    name: postgresql
+    state: restarted
+    enabled: yes
 
-- name: Add Citus cluster configuration to pg_hba.conf
-  blockinfile:
-    path: "{{ postgresql_hba_file }}"
-    marker: "# {mark} ANSIBLE MANAGED BLOCK - Citus Cluster Configuration"
-    block: |
-      # Citus cluster trusted networks
-      {% for network in postgresql_trusted_networks %}
-      host    all             all             {{ network }}           trust
-      {% endfor %}
-      
-      {% if postgresql_enable_replication | default(false) %}
-      # Citus replication connections
-      {% for host in groups['citusdb'] | default([]) %}
-      host    replication     all             {{ hostvars[host]['ansible_default_ipv4']['address'] }}/32    trust
-      {% endfor %}
-      {% endif %}
-    insertafter: EOF
-    backup: yes
-    owner: postgres
-    group: postgres
-    mode: '0640'
-  become: true
-  notify: restart postgresql
 
-- name: Start and enable PostgreSQL service
-  systemd:
-    name: "{{ postgresql_service_name }}"
-    state: started
-    enabled: "{{ postgresql_auto_start }}"
-  become: true
+- name: Create Citus extension
+  become_user: postgres
+  postgresql_ext:
+    name: citus
+    db: postgres
