@@ -4,7 +4,7 @@ This guide helps you set up a development environment for testing Ansible roles 
 
 ---
 
-## 1. Prerequisites
+## Prerequisites
 
 Make sure you have the following installed:
 
@@ -13,7 +13,7 @@ Make sure you have the following installed:
 - Fish shell (`fish`)
 - Git
 
-Check versions:
+### Check Versions
 
 ```fish
 python3 --version
@@ -21,15 +21,17 @@ docker --version
 docker-compose --version
 fish --version
 git --version
+```
 
+---
 
-
-
-
-2. Create a Python Virtual Environment
+## Python Virtual Environment Setup
 
 It's recommended to use a Python virtual environment to isolate dependencies:
 
+### Create and Activate Virtual Environment
+
+```fish
 # Create a venv
 python3 -m venv ~/ansible-molecule-venv
 
@@ -38,49 +40,69 @@ source ~/ansible-molecule-venv/bin/activate.fish
 
 # Upgrade pip
 pip install --upgrade pip
+```
 
+### Deactivate Virtual Environment
 
-To deactivate the virtual environment:
-
+```fish
 deactivate
+```
 
-3. Install Molecule & Docker Driver
+---
 
-With the venv activated:
+## Installation
 
+### Install Molecule & Docker Driver
+
+With the virtual environment activated:
+
+```fish
 pip install molecule molecule-docker docker
-
+```
 
 This will allow you to test Ansible roles using Docker containers as test instances.
 
-4. Install Ansible
+### Install Ansible
 
 If Ansible is not installed:
 
+```fish
 pip install ansible
+```
 
+### Verify Installation
 
-Check version:
-
+```fish
 ansible --version
+```
 
-5. Install Ansible Galaxy Roles
+---
+
+## Ansible Galaxy Roles
 
 If your role depends on any Ansible Galaxy roles:
 
+```fish
 # Install roles defined in requirements.yml
 ansible-galaxy install -r requirements.yml
+```
 
+### Example requirements.yml
 
-Example requirements.yml:
-
+```yaml
 - src: geerlingguy.postgresql
   version: 4.12.0
+```
 
-6. Configure Environment Variables in Fish
+---
 
-Fish shell uses set instead of export. For example:
+## Environment Configuration
 
+### Fish Shell Environment Variables
+
+Fish shell uses `set` instead of `export`. For example:
+
+```fish
 # Set database network range
 set -x DB_NETWORK_IP_RANGE 10.0.0.0/16
 
@@ -88,31 +110,52 @@ set -x DB_NETWORK_IP_RANGE 10.0.0.0/16
 set -x PG_USERS_JSON '[{"name": "dbuser", "password": "secret"}]'
 
 # These variables will be available to Ansible using env lookup
+```
 
+**Note:** Use `set -U VAR value` to set universal variables that persist across sessions.
 
-Use set -U VAR value to set universal variables that persist across sessions.
+---
 
-7. Testing Ansible Role with Molecule
+## Testing with Molecule
 
-Inside your role directory:
+### Initialize Molecule Scenario
 
-# Initialize molecule scenario (only first time)
+Inside your role directory (only needed the first time):
+
+```fish
+# Initialize molecule scenario
 molecule init scenario --scenario-name default -r <role_name> -d docker
+```
 
+### Run Tests
+
+```fish
 # Test the role
 molecule test
-
+```
 
 Molecule will build Docker containers, apply your role, and run any tests defined.
 
-8. Notes & Tips
+---
 
-Always activate your Python virtual environment before running molecule.
+## Additional Commands
 
-Use molecule converge to apply your role without destroying the container.
+### Development Commands
 
-Use molecule login to enter the test container for debugging.
+```fish
+# Apply role without destroying container
+molecule converge
 
-Environment variables in Fish must be exported with set -x to be visible to Ansible.
+# Enter the test container for debugging
+molecule login
+```
 
-Keep Docker updated for better performance with Molecule tests.
+---
+
+## Notes & Tips
+
+- **Always activate your Python virtual environment** before running molecule
+- Use `molecule converge` to apply your role without destroying the container
+- Use `molecule login` to enter the test container for debugging
+- Environment variables in Fish must be exported with `set -x` to be visible to Ansible
+- Keep Docker updated for better performance with Molecule tests
