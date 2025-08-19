@@ -1,0 +1,21 @@
+all:
+  children:
+    db_masters:
+      hosts:
+        db-coordinator:
+          ansible_host: 49.12.99.99
+          ansible_ssh_private_key_file: ~/.ssh/chronologix
+          db_node_type: coordinator
+          private_ip: 10.0.2.1
+    db_workers:
+      hosts:
+        db-worker-01:
+          ansible_host: 78.47.228.167
+          ansible_ssh_private_key_file: ~/.ssh/chronologix
+          db_node_type: worker
+          private_ip: 10.0.2.2
+        db-worker-02:
+          ansible_host: 88.99.84.135
+          ansible_ssh_private_key_file: ~/.ssh/chronologix
+          db_node_type: worker
+          private_ip: 10.0.2.3
