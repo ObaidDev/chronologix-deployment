@@ -1,1 +1,4 @@
 *.env
+inventory/hosts.yml
+
+*.log
