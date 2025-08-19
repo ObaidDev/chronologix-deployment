@@ -1,6 +1,4 @@
 ---
-
-
 - name: Show simple message
   debug:
     msg: "Installing PostgreSQL and Citus"
