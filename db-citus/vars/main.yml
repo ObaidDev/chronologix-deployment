@@ -1,5 +1,7 @@
 ---
-# vars file for db-citus
+##########################################################
+#       PostgreSQL configuration Files and dirs paths    #
+#########################################################
 postgresql_config_dir: "/etc/postgresql/{{ postgresql_version }}/main"
 postgresql_data_dir: "/var/lib/postgresql/{{ postgresql_version }}/main"
 postgresql_hba_file: "{{ postgresql_config_dir }}/pg_hba.conf"
@@ -7,7 +9,18 @@ postgresql_conf_file: "{{ postgresql_config_dir }}/postgresql.conf"
 
 
 
-# networks
+##################################################
+#                 Networking Config              #
+##################################################
+db_network_ip_range: "{{ lookup('env','DB_NETWORK_IP_RANGE') | default('10.0.0.0/16', true) }}"
+db_network_pattern: "^{{ db_network_ip_range | regex_replace('/.*$', '') | regex_replace('\\.[0-9]+\\.[0-9]+$', '') }}\\..*"
+db_network_name: "{{ lookup('env','DB_NETWORK_NAME') | default('db-network', true) }}"
+
 pg_allowed_networks: "{{ lookup('env', 'PG_ALLOWED_NETWORKS_JSON') | default('[\"10.0.0.0/16\"]', true) | from_json }}"
 
-pg_users: "{{ lookup('env','PG_USERS_JSON') | default('[{\"name\":\"citus_admin\",\"password\":\"Secret123\",\"role_attr_flags\":\"SUPERUSER,CREATEDB,LOGIN\"}]', true) | from_json }}"
+
+
+##################################################
+#             Security user access               #
+#################################################
+pg_users: "{{ lookup('env','PG_USERS_JSON') | from_json }}"
