@@ -1,22 +1,52 @@
 ---
-- name: Set coordinator host
-  become_user: postgres
-  postgresql_query:
-    query: "SELECT citus_set_coordinator_host('{{ ansible_hostname }}', {{ postgres_port }});"
-    db: postgres
+
+# Auto-discovery tasks (run once, gather facts from workers)
+- name: Auto-discover worker node private IPs
+  block:
+    - name: Gather network facts from worker nodes
+      setup:
+        gather_subset: network
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      loop: "{{ groups['db_workers'] }}"
+
+    - name: Build worker nodes list with private IPs
+      set_fact:
+        worker_nodes_private: "{{ worker_nodes_private | default([]) + [{'host': (hostvars[item]['ansible_all_ipv4_addresses'] | select('match', db_network_pattern) | first), 'port': postgres_port}] }}"
+      loop: "{{ groups['db_workers'] }}"
+
+  run_once: true
 
 
-- name: Add worker nodes
-  become_user: postgres
-  postgresql_query:
-    query: "SELECT * FROM citus_add_node('{{ item.host }}', {{ item.port }});"
-    db: postgres
-  loop: "{{ worker_nodes }}"
+- name: Coordinator specific tasks
+  block :
 
+    - name: Get coordinator private IP
+      set_fact:
+        coordinator_private_ip: "{{ hostvars[inventory_hostname]['ansible_all_ipv4_addresses'] | select('match', db_network_pattern) | first }}"
 
+    - name: Set coordinator host using private IP
+      become_user: postgres
+      postgresql_query:
+        query: "SELECT citus_set_coordinator_host('{{ coordinator_private_ip }}', {{ postgres_port }});"
+        db: postgres
 
-- name: Verify worker nodes
-  become_user: postgres
-  postgresql_query:
-    query: "SELECT * FROM citus_get_active_worker_nodes();"
-    db: postgres
+    - name:  Add worker nodes using private IPs
+      become_user: postgres
+      postgresql_query:
+        query: "SELECT * FROM citus_add_node('{{ item.host }}', {{ item.port }});"
+        db: postgres
+      loop: "{{ worker_nodes_private }}"
+
+    - name: Verify worker nodes
+      become_user: postgres
+      postgresql_query:
+        query: "SELECT * FROM citus_get_active_worker_nodes();"
+        db: postgres
+      register: verify_result
+
+    - name: Debug active worker nodes
+      debug:
+        var: verify_result
+
+  when: inventory_hostname in groups['db_masters']
