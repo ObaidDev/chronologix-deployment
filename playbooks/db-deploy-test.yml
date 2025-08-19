@@ -1,0 +1,6 @@
+---
+- name: Test db-deploy role
+  hosts: all
+  become: true
+  roles:
+    - db-citus
