@@ -159,3 +159,7 @@ molecule login
 - Use `molecule login` to enter the test container for debugging
 - Environment variables in Fish must be exported with `set -x` to be visible to Ansible
 - Keep Docker updated for better performance with Molecule tests
+
+
+
+Example : https://community.hetzner.com/tutorials/testing-ansible-with-molecule
