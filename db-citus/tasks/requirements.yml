@@ -1,0 +1,7 @@
+---
+- name: Install OS package for psycopg2 (needed on target machines)
+  apt:
+    name: python3-psycopg2
+    state: present
+    update_cache: yes
+  become: true
