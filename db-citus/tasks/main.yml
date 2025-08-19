@@ -1,6 +1,9 @@
 ---
 # tasks file for db-citus
 
+- name: Install Requirements needed on target machines
+  include_tasks: requirements.yml
+
 - name: Include tasks of installation
   include_tasks: install.yml
 
