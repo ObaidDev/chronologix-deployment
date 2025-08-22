@@ -1,18 +1,29 @@
 all:
   children:
+
+    ###################################
+    #           Master group          #
+    ###################################
     db_masters:
+      vars:
+          ansible_ssh_private_key_file: ~/.ssh/chronologix
       hosts:
         db-coordinator:
           ansible_host: 49.12.99.99
-          ansible_ssh_private_key_file: ~/.ssh/chronologix
           db_node_type: coordinator
+
+
+    ###################################
+    #           Worker group          #
+    ###################################
+
     db_workers:
+      vars:
+          ansible_ssh_private_key_file: ~/.ssh/chronologix
       hosts:
         db-worker-01:
           ansible_host: 78.47.228.167
-          ansible_ssh_private_key_file: ~/.ssh/chronologix
           db_node_type: worker
         db-worker-02:
           ansible_host: 88.99.84.135
-          ansible_ssh_private_key_file: ~/.ssh/chronologix
           db_node_type: worker
