@@ -1,0 +1,9 @@
+---
+
+##########################################################
+#       PostgreSQL configuration Files and dirs paths    #
+#########################################################
+postgresql_config_dir: "/etc/postgresql/{{ postgresql_version }}/main"
+postgresql_data_dir: "/var/lib/postgresql/{{ postgresql_version }}/main"
+postgresql_hba_file: "{{ postgresql_config_dir }}/pg_hba.conf"
+postgresql_conf_file: "{{ postgresql_config_dir }}/postgresql.conf"
