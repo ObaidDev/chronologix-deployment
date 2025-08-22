@@ -1,0 +1,6 @@
+---
+- name: Test db-backup-config role
+  hosts: all
+  become: true
+  roles:
+    - db-backup-config
