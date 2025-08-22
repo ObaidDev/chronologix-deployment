@@ -1,0 +1,21 @@
+---
+- name: Setup daily full backup cron
+  become: true
+  block:
+    - name: Add cron job for full backup at (sandy)
+      cron:
+        name: "pgBackRest Full Backup"
+        user: postgres
+        weekday: 0
+        hour: 2
+        minute: 0
+        job: "pgbackrest --stanza={{ pgbackrest_stanza }}_{{ inventory_hostname }} --type=full backup"
+
+    - name: Add cron job for Incremental backup (middle of the weeek)
+      cron:
+        name: "pgBackRest Incremental Backup"
+        user: postgres
+        weekday: 1-6
+        hour: 2
+        minute: 0
+        job: "pgbackrest --stanza=citus_cluster --type=incr backup"
