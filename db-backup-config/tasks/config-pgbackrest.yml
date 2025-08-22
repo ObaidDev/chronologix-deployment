@@ -1,0 +1,20 @@
+---
+- name: Configure pgBackRest
+  become: true
+  block :
+  
+    - name: Ensure pgBackRest repo directory exists
+      file:
+        path: "{{ pgbackrest_repo_path }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0750'
+
+    - name: Deploy pgBackRest configuration
+      template:
+        src: pgbackrest.conf.j2
+        dest: "{{ pgbackrest_repo_path }}/pgbackrest.conf"
+        owner: postgres
+        group: postgres
+        mode: '0640'
