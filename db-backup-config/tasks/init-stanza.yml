@@ -1,0 +1,8 @@
+---
+
+- name: Initialize pgBackRest stanza
+  become: true
+  block:
+    - name: Initialize stanza
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} --config={{ pgbackrest_repo_path }}/pgbackrest.conf stanza-create
+      become_user: postgres
