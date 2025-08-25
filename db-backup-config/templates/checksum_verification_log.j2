@@ -1,0 +1,43 @@
+=======================================================
+pgBackRest Checksum Verification Report
+=======================================================
+Date: {{ verification_timestamp }}
+Host: {{ inventory_hostname }}
+Stanza: {{ pgbackrest_stanza }}
+
+=======================================================
+CHECKSUM VERIFICATION STATUS
+=======================================================
+Overall Status: {% if checksum_check_result.rc == 0 %}✓ PASSED{% else %}✗ FAILED{% endif %}
+Return Code: {{ checksum_check_result.rc }}
+
+=======================================================
+VERIFICATION OUTPUT
+=======================================================
+{{ checksum_check_result.stdout }}
+
+{% if checksum_check_result.stderr %}
+=======================================================
+ERROR OUTPUT
+=======================================================
+{{ checksum_check_result.stderr }}
+{% endif %}
+
+=======================================================
+BACKUP INFORMATION WITH CHECKSUMS
+=======================================================
+{{ backup_info_result.stdout }}
+
+=======================================================
+CHECKSUM DETAILS
+=======================================================
+{% set backup_list = backup_checksum_data[0].backup if backup_checksum_data[0].backup is defined else [] %}
+{% for backup in backup_list %}
+Backup: {{ backup.label }}
+  - Type: {{ backup.type }}
+  - Timestamp: {{ backup.timestamp.start }} - {{ backup.timestamp.stop }}
+  - Database Size: {{ backup.info.size | default('N/A') }}
+  - Repository Size: {{ backup.info['repository-size'] | default('N/A') }}
+  - Checksum: {{ backup.info.checksum | default('Enabled via pgBackRest') }}
+
+{% endfor %}

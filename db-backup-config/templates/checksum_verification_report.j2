@@ -1,0 +1,85 @@
+{
+  "text": "📊 PostgreSQL Backup Report - {{ inventory_hostname }}",
+  "blocks": [
+    {
+      "type": "header",
+      "text": {
+        "type": "plain_text",
+        "text": "🗄️ PostgreSQL Backup & Checksum Report"
+      }
+    },
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Server:* `{{ inventory_hostname }}`"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Stanza:* `{{ pgbackrest_stanza }}`"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Date:* {{ verification_timestamp }}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Status:* {% if checksum_check_result.rc == 0 %}✅ HEALTHY{% else %}❌ FAILED{% endif %}"
+        }
+      ]
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*🔍 Verification Results:*\n{% if checksum_check_result.rc == 0 %}• ✅ Backup integrity check passed\n• ✅ Checksum validation successful\n• ✅ Repository accessible{% else %}• ❌ Backup verification failed\n• ⚠️ Manual investigation required{% endif %}"
+      }
+    },
+    {% set backup_list = backup_checksum_data[0].backup if backup_checksum_data[0].backup is defined and backup_checksum_data[0].backup|length > 0 else [] %}
+    {% if backup_list|length > 0 %}
+    {
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*📂 Latest Backups:*"
+      }
+    },
+    {% for backup in backup_list[-3:] %}
+    {
+      "type": "section",
+      "fields": [
+        {
+          "type": "mrkdwn",
+          "text": "*Type:* {% if backup.type == 'full' %}🔄 Full{% elif backup.type == 'incr' %}⬆️ Incremental{% else %}📊 {{ backup.type|title }}{% endif %}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Size:* {{ (backup.info.size | int / 1024 / 1024 / 1024) | round(2) if backup.info.size is defined else 'N/A' }} GB"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Completed:* {{ backup.timestamp.stop if backup.timestamp.stop is defined else 'N/A' }}"
+        },
+        {
+          "type": "mrkdwn",
+          "text": "*Duration:* {{ ((backup.timestamp.stop | int) - (backup.timestamp.start | int)) if backup.timestamp.stop is defined and backup.timestamp.start is defined else 'N/A' }}s"
+        }
+      ]
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+    {% endif %}
+    {% if checksum_check_result.rc != 0 %}
+    ,{
+      "type": "section",
+      "text": {
+        "type": "mrkdwn",
+        "text": "*🚨 Error Details:*\n```{{ checksum_check_result.stderr | default('No error details available') }}```"
+      }
+    }
+    {% endif %}
+  ]
+}
