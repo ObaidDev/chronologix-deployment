@@ -3,6 +3,16 @@
 - name: Initialize pgBackRest stanza
   become: true
   block:
-    - name: Initialize stanza
-      command: pgbackrest --stanza={{ pgbackrest_stanza }} --config={{ pgbackrest_repo_path }}/pgbackrest.conf stanza-create
+    - name: Check if stanza already exists
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} info
       become_user: postgres
+      register: stanza_check
+      failed_when: false
+      changed_when: false
+
+    - name: Initialize stanza if it doesn't exist
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} stanza-create
+      become_user: postgres
+      when: stanza_check.rc != 0
+      register: stanza_create
+      failed_when: stanza_create.rc != 0 and "already exists" not in stanza_create.stderr
