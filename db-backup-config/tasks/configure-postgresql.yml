@@ -1,0 +1,18 @@
+---
+- name: Configure PostgreSQL for pgBackRest (minimal setup)
+  become: true
+  block:
+    - name: Enable archive_mode for pgBackRest (required)
+      lineinfile:
+        path: "{{ postgresql_config_dir }}/postgresql.conf"
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { regexp: '^#?archive_mode\s*=', line: 'archive_mode = on' }
+        - { regexp: '^#?archive_command\s*=', line: "archive_command = 'pgbackrest --stanza={{ pgbackrest_stanza }} archive-push %p'" }
+        - { regexp: '^#?wal_level\s*=', line: 'wal_level = replica' }
+      notify: restart postgresql
+
+    - name: Force PostgreSQL restart to apply settings
+      meta: flush_handlers
