@@ -1,21 +1,37 @@
 ---
-- name: Setup daily full backup cron
+- name: Setup backup schedules with checksum verification
   become: true
   block:
-    - name: Add cron job for full backup at (sandy)
+    - name: Create backup script with checksum verification
+      template:
+        src: backup_with_checksum.sh.j2
+        dest: /usr/local/bin/pgbackrest_backup_with_checksum.sh
+        owner: postgres
+        group: postgres
+        mode: '0755'
+
+    - name: Add cron job for full backup with checksum verification (Sunday)
       cron:
-        name: "pgBackRest Full Backup"
+        name: "pgBackRest Full Backup with Checksum Verification"
         user: postgres
         weekday: 0
         hour: 2
         minute: 0
-        job: "pgbackrest --stanza={{ pgbackrest_stanza }}_{{ inventory_hostname }} --type=full backup"
+        job: "/usr/local/bin/pgbackrest_backup_with_checksum.sh full"
 
-    - name: Add cron job for Incremental backup (middle of the weeek)
+    - name: Add cron job for incremental backup with checksum verification (Monday-Saturday)
       cron:
-        name: "pgBackRest Incremental Backup"
+        name: "pgBackRest Incremental Backup with Checksum Verification"
         user: postgres
         weekday: 1-6
         hour: 2
         minute: 0
-        job: "pgbackrest --stanza=citus_cluster --type=incr backup"
+        job: "/usr/local/bin/pgbackrest_backup_with_checksum.sh incr"
+
+    - name: Add cron job for daily checksum verification (every day at 6 AM)
+      cron:
+        name: "pgBackRest Daily Checksum Verification"
+        user: postgres
+        hour: 6
+        minute: 0
+        job: "/usr/local/bin/pgbackrest_backup_with_checksum.sh verify"
