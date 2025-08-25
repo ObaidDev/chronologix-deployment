@@ -1,0 +1,44 @@
+---
+- name: Checksum Verification for Backups
+  become: true
+  block:
+    - name: Verify backup checksums with pgBackRest
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} check
+      become_user: postgres
+      register: pgbackrest_checksum_check
+      failed_when: pgbackrest_checksum_check.rc != 0
+      tags: checksum_verification
+
+    - name: Get detailed backup info with checksums
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} info --output=json
+      become_user: postgres
+      register: backup_checksum_info
+      failed_when: backup_checksum_info.rc != 0
+      tags: checksum_verification
+
+    - name: Parse backup information for checksum validation
+      set_fact:
+        backup_checksum_data: "{{ backup_checksum_info.stdout | from_json }}"
+      tags: checksum_verification
+
+    - name: Create checksum verification log
+      template:
+        src: checksum_verification_log.j2
+        dest: "/var/log/pgbackrest/checksum_verification_{{ ansible_date_time.epoch }}.log"
+        owner: postgres
+        group: postgres
+        mode: '0644'
+      vars:
+        checksum_check_result: "{{ pgbackrest_checksum_check }}"
+        backup_info_result: "{{ backup_checksum_info }}"
+        verification_timestamp: "{{ ansible_date_time.iso8601 }}"
+      tags: checksum_verification
+
+    - name: Display checksum verification results
+      debug:
+        msg: |
+          Checksum Verification Results:
+          Status: {% if pgbackrest_checksum_check.rc == 0 %}PASSED{% else %}FAILED{% endif %}
+          
+          Details: {{ pgbackrest_checksum_check.stdout_lines[-5:] if pgbackrest_checksum_check.stdout_lines|length > 5 else pgbackrest_checksum_check.stdout_lines }}
+      tags: checksum_verification
