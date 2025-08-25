@@ -1,0 +1,40 @@
+---
+- name: Send Slack Notification for Backup Report
+  block:
+    - name: Generate Slack report payload
+      template:
+        src: checksum_verification_report.j2
+        dest: "/tmp/slack_backup_report_{{ ansible_date_time.epoch }}.json"
+        mode: '0644'
+      vars:
+        checksum_check_result: "{{ pgbackrest_checksum_check }}"
+        backup_info_result: "{{ backup_checksum_info }}"
+        backup_checksum_data: "{{ backup_checksum_info.stdout | from_json }}"
+        verification_timestamp: "{{ ansible_date_time.iso8601 }}"
+
+    - name: Read Slack report payload from target server
+      slurp:
+        src: "/tmp/slack_backup_report_{{ ansible_date_time.epoch }}.json"
+      register: slack_payload_content
+
+    - name: Send backup report to Slack
+      uri:
+        url: "{{ slack_webhook_url }}"
+        method: POST
+        body_format: json
+        body: "{{ slack_payload_content.content | b64decode | from_json }}"
+        status_code: 200
+        timeout: 30
+      register: slack_response
+      failed_when: false
+
+    - name: Log Slack notification result
+      debug:
+        msg: "Slack notification {% if slack_response.status == 200 %}sent successfully{% else %}failed ({{ slack_response.status }}){% endif %}"
+
+    - name: Clean up temporary report file
+      file:
+        path: "/tmp/slack_backup_report_{{ ansible_date_time.epoch }}.json"
+        state: absent
+  when: slack_webhook_url is defined and slack_webhook_url != ""
+  tags: slack_notification
