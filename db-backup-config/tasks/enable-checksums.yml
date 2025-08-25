@@ -1,0 +1,41 @@
+---
+- name: Enable PostgreSQL Data Checksums
+  become: true
+  block:
+    - name: Check if checksums are already enabled
+      command: psql -U postgres -t -c "SHOW data_checksums;"
+      become_user: postgres
+      register: checksum_status
+      changed_when: false
+
+    - name: Display current checksum status
+      debug:
+        msg: "PostgreSQL data checksums status: {{ checksum_status.stdout.strip() }}"
+
+    - name: Stop PostgreSQL for checksum enablement
+      service:
+        name: postgresql
+        state: stopped
+      when: checksum_status.stdout.strip() == 'off'
+
+    - name: Enable data checksums (requires cluster restart)
+      command: /usr/lib/postgresql/{{ postgres_version }}/bin/pg_checksums --enable -D {{ postgresql_data_dir }}
+      become_user: postgres
+      when: checksum_status.stdout.strip() == 'off'
+      register: checksum_enable
+
+    - name: Start PostgreSQL after enabling checksums
+      service:
+        name: postgresql
+        state: started
+      when: checksum_status.stdout.strip() == 'off'
+
+    - name: Verify checksums are now enabled (final check)
+      command: psql -U postgres -t -c "SHOW data_checksums;"
+      become_user: postgres
+      register: final_checksum_status
+      changed_when: false
+
+    - name: Display final checksum status
+      debug:
+        msg: "PostgreSQL data checksums final status: {{ final_checksum_status.stdout.strip() }}"
