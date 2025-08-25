@@ -1,7 +1,0 @@
-- name: Hetzner infra
-  hosts: localhost
-  connection: local
-  gather_facts: false
-
-  roles:
-    - db-infrastructure
