@@ -1,0 +1,94 @@
+---
+- name: Configure pgBackRest
+  become: true
+  block:
+  
+    - name: Ensure pgBackRest repo directory exists
+      file:
+        path: "{{ pgbackrest_repo_path }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0750'
+
+    - name: Ensure pgBackRest config directory exists
+      file:
+        path: "{{ pgbackrest_config_dir }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: '0750'
+
+    - name: Deploy pgBackRest configuration
+      template:
+        src: pgbackrest.conf.j2
+        dest: "{{ pgbackrest_config_dir }}/pgbackrest.conf"
+        owner: postgres
+        group: postgres
+        mode: '0640'
+      notify: restart postgresql
+
+    - name: Force handler execution before stanza operations
+      meta: flush_handlers
+
+    - name: Check if stanza already exists
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} info
+      become_user: postgres
+      register: stanza_check
+      failed_when: false
+      changed_when: false
+
+    - name: Debug - Show stanza info output
+      debug:
+        var: stanza_check.stdout_lines
+
+    - name: Force recreate stanza (delete first)
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} stanza-delete --force
+      become_user: postgres
+      register: stanza_delete
+      failed_when: false
+      when: stanza_check.rc == 0
+
+    - name: Debug - Show stanza delete result
+      debug:
+        msg: "Stanza delete return code: {{ stanza_delete.rc }}, stderr: {{ stanza_delete.stderr }}, stdout: {{ stanza_delete.stdout }}"
+      when: stanza_check.rc == 0
+
+    - name: Create fresh stanza
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} stanza-create
+      become_user: postgres
+      register: stanza_create
+      failed_when: stanza_create.rc != 0
+
+    - name: Debug - Show stanza create result
+      debug:
+        msg: "Stanza create return code: {{ stanza_create.rc }}, stderr: {{ stanza_create.stderr }}, stdout: {{ stanza_create.stdout }}"
+
+    - name: Verify stanza was created successfully
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} info
+      become_user: postgres
+      register: stanza_verify
+      failed_when: stanza_verify.rc != 0
+
+    - name: Debug - Show final stanza info
+      debug:
+        var: stanza_verify.stdout_lines
+
+    - name: Run pgbackrest check before backup (skip archive check)
+      command: pgbackrest --stanza={{ pgbackrest_stanza }} check --archive-timeout=1
+      become_user: postgres
+      register: pgbackrest_check
+      failed_when: false
+
+    - name: Debug - Show check result
+      debug:
+        msg: "Check result: RC={{ pgbackrest_check.rc }}, Output={{ pgbackrest_check.stdout }}"
+
+    # - name: Run initial full backup (bypass archive check)
+    #   command: pgbackrest --stanza={{ pgbackrest_stanza }} --type=full --no-archive-check backup
+    #   become_user: postgres
+    #   register: initial_backup
+    #   failed_when: initial_backup.rc != 0
+    #   changed_when: true
+    #   tags: 
+    #     - initial_backup
