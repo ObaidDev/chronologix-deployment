@@ -1,15 +1,11 @@
 ---
 # tasks file for db-backup-config
 
-- name: Install pgBackRest
-  include_tasks: install-pgbackrest.yml
-
-- name : Configure pgBackRest
-  include_tasks: config-pgbackrest.yml
-
-- name: Initialize stanza (backups configuration profiles)
-  include_tasks: init-stanza.yml
-
-- name: Schedule pgBackRest Backups
-  include_tasks: schedule-backups.yml
+- import_tasks: install-pgbackrest.yml
+- import_tasks: enable-checksums.yml
+- import_tasks: configure-postgresql.yml
+- import_tasks: configure-pgbackrest.yml
+- import_tasks: checksum-verification.yml
+- import_tasks: schedule-backups.yml
+- import_tasks: slack-notification.yml
 
