@@ -1,0 +1,144 @@
+#!/bin/bash
+set -euo pipefail
+
+STANZA="{{ pgbackrest_stanza }}"
+LOG_DIR="/var/log/pgbackrest"
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+ACTION="$1"
+SLACK_WEBHOOK="{{ slack_webhook_url }}"
+
+# Ensure log directory exists
+mkdir -p "$LOG_DIR"
+
+# Function to log messages
+log_message() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') [$ACTION] $1" | tee -a "$LOG_DIR/backup_checksum.log"
+}
+
+# Function to send Slack notification
+send_slack_notification() {
+    local status="$1"
+    local message="$2"
+    
+    if [[ -n "$SLACK_WEBHOOK" ]]; then
+        local emoji="✅"
+        local color="good"
+        
+        if [[ "$status" == "FAILED" ]]; then
+            emoji="❌"
+            color="danger"
+        elif [[ "$status" == "WARNING" ]]; then
+            emoji="⚠️"
+            color="warning"
+        fi
+        
+        curl -X POST -H 'Content-type: application/json' \
+            --data "{
+                \"attachments\": [{
+                    \"color\": \"$color\",
+                    \"title\": \"$emoji PostgreSQL Backup Report - {{ inventory_hostname }}\",
+                    \"fields\": [
+                        {\"title\": \"Action\", \"value\": \"$ACTION\", \"short\": true},
+                        {\"title\": \"Status\", \"value\": \"$status\", \"short\": true},
+                        {\"title\": \"Timestamp\", \"value\": \"$(date '+%Y-%m-%d %H:%M:%S')\", \"short\": true},
+                        {\"title\": \"Server\", \"value\": \"{{ inventory_hostname }}\", \"short\": true}
+                    ],
+                    \"text\": \"$message\"
+                }]
+            }" \
+            "$SLACK_WEBHOOK" || log_message "Failed to send Slack notification"
+    fi
+}
+
+# Function to verify checksums
+verify_checksums() {
+    log_message "Starting checksum verification..."
+    
+    if pgbackrest --stanza="$STANZA" check 2>&1 | tee "$LOG_DIR/checksum_verify_$TIMESTAMP.log"; then
+        log_message "✓ Checksum verification PASSED"
+        pgbackrest --stanza="$STANZA" info --output=json > "$LOG_DIR/backup_checksum_info_$TIMESTAMP.json"
+        log_message "✓ Backup checksum info saved"
+        return 0
+    else
+        log_message "✗ Checksum verification FAILED"
+        return 1
+    fi
+}
+
+# Function to perform backup with checksum verification
+perform_backup() {
+    local backup_type="$1"
+    log_message "Starting $backup_type backup..."
+    
+    # Get backup start time
+    local start_time=$(date '+%s')
+    
+    if pgbackrest --stanza="$STANZA" --type="$backup_type" backup 2>&1 | tee "$LOG_DIR/backup_$backup_type_$TIMESTAMP.log"; then
+        local end_time=$(date '+%s')
+        local duration=$((end_time - start_time))
+        
+        log_message "✓ $backup_type backup completed successfully in ${duration}s"
+        
+        if verify_checksums; then
+            log_message "✓ Post-backup checksum verification PASSED"
+            
+            # Send success notification
+            {% if notify_on_success %}
+            send_slack_notification "SUCCESS" "$backup_type backup completed successfully in ${duration}s with checksum verification passed"
+            {% endif %}
+            return 0
+        else
+            log_message "✗ Post-backup checksum verification FAILED"
+            
+            # Send failure notification
+            {% if notify_on_failure %}
+            send_slack_notification "FAILED" "$backup_type backup completed but checksum verification failed"
+            {% endif %}
+            return 1
+        fi
+    else
+        log_message "✗ $backup_type backup FAILED"
+        
+        # Send failure notification
+        {% if notify_on_failure %}
+        send_slack_notification "FAILED" "$backup_type backup failed to complete"
+        {% endif %}
+        return 1
+    fi
+}
+
+# Main execution
+case "$ACTION" in
+    "full"|"incr"|"diff")
+        log_message "=== Starting $ACTION backup with checksum verification ==="
+        
+        if perform_backup "$ACTION"; then
+            log_message "=== $ACTION backup and checksum verification completed successfully ==="
+            exit 0
+        else
+            log_message "=== $ACTION backup or checksum verification FAILED ==="
+            exit 1
+        fi
+        ;;
+    "verify")
+        log_message "=== Starting checksum verification only ==="
+        if verify_checksums; then
+            log_message "=== Checksum verification completed successfully ==="
+            {% if notify_on_success %}
+            send_slack_notification "SUCCESS" "Scheduled checksum verification completed successfully"
+            {% endif %}
+            exit 0
+        else
+            log_message "=== Checksum verification FAILED ==="
+            {% if notify_on_failure %}
+            send_slack_notification "FAILED" "Scheduled checksum verification failed"
+            {% endif %}
+            exit 1
+        fi
+        ;;
+    *)
+        log_message "Invalid action: $ACTION. Use: full, incr, diff, or verify"
+        send_slack_notification "FAILED" "Invalid backup action: $ACTION"
+        exit 1
+        ;;
+esac
