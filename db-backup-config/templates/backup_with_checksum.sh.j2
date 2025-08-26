@@ -15,10 +15,24 @@ log_message() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') [$ACTION] $1" | tee -a "$LOG_DIR/backup_checksum.log"
 }
 
-# Function to send Slack notification
+# Function to get last N lines of log and format for Slack
+get_log_summary() {
+    local log_file="$1"
+    local lines="${2:-10}"
+    
+    if [[ -f "$log_file" ]]; then
+        # Get last N lines, escape special characters for JSON
+        tail -n "$lines" "$log_file" | sed 's/\\/\\\\/g; s/"/\\"/g; s/$/\\n/' | tr -d '\n'
+    else
+        echo "Log file not found: $log_file"
+    fi
+}
+
+# Enhanced function to send Slack notification with error details
 send_slack_notification() {
     local status="$1"
     local message="$2"
+    local error_log="${3:-}"
     
     if [[ -n "$SLACK_WEBHOOK" ]]; then
         local emoji="✅"
@@ -32,20 +46,32 @@ send_slack_notification() {
             color="warning"
         fi
         
+        # Prepare the base payload
+        local payload="{
+            \"attachments\": [{
+                \"color\": \"$color\",
+                \"title\": \"$emoji PostgreSQL Backup Report - {{ inventory_hostname }}\",
+                \"fields\": [
+                    {\"title\": \"Action\", \"value\": \"$ACTION\", \"short\": true},
+                    {\"title\": \"Status\", \"value\": \"$status\", \"short\": true},
+                    {\"title\": \"Timestamp\", \"value\": \"$(date '+%Y-%m-%d %H:%M:%S')\", \"short\": true},
+                    {\"title\": \"Server\", \"value\": \"{{ inventory_hostname }}\", \"short\": true}"
+        
+        # Add error log details if status is FAILED and log exists
+        if [[ "$status" == "FAILED" && -n "$error_log" && -f "$error_log" ]]; then
+            local log_summary=$(get_log_summary "$error_log" 15)
+            payload="${payload},
+                    {\"title\": \"📋 Error Log Summary (Last 15 lines)\", \"value\": \"\\`\\`\\`${log_summary}\\`\\`\\`\", \"short\": false}"
+        fi
+        
+        payload="${payload}
+                ],
+                \"text\": \"$message\"
+            }]
+        }"
+        
         curl -X POST -H 'Content-type: application/json' \
-            --data "{
-                \"attachments\": [{
-                    \"color\": \"$color\",
-                    \"title\": \"$emoji PostgreSQL Backup Report - {{ inventory_hostname }}\",
-                    \"fields\": [
-                        {\"title\": \"Action\", \"value\": \"$ACTION\", \"short\": true},
-                        {\"title\": \"Status\", \"value\": \"$status\", \"short\": true},
-                        {\"title\": \"Timestamp\", \"value\": \"$(date '+%Y-%m-%d %H:%M:%S')\", \"short\": true},
-                        {\"title\": \"Server\", \"value\": \"{{ inventory_hostname }}\", \"short\": true}
-                    ],
-                    \"text\": \"$message\"
-                }]
-            }" \
+            --data "$payload" \
             "$SLACK_WEBHOOK" || log_message "Failed to send Slack notification"
     fi
 }
@@ -54,7 +80,9 @@ send_slack_notification() {
 verify_checksums() {
     log_message "Starting checksum verification..."
     
-    if pgbackrest --stanza="$STANZA" check 2>&1 | tee "$LOG_DIR/checksum_verify_$TIMESTAMP.log"; then
+    local checksum_log="$LOG_DIR/checksum_verify_$TIMESTAMP.log"
+    
+    if pgbackrest --stanza="$STANZA" check 2>&1 | tee "$checksum_log"; then
         log_message "✓ Checksum verification PASSED"
         pgbackrest --stanza="$STANZA" info --output=json > "$LOG_DIR/backup_checksum_info_$TIMESTAMP.json"
         log_message "✓ Backup checksum info saved"
@@ -72,8 +100,10 @@ perform_backup() {
     
     # Get backup start time
     local start_time=$(date '+%s')
+    local backup_log="$LOG_DIR/backup_${backup_type}_$TIMESTAMP.log"
     
-    if pgbackrest --stanza="$STANZA" --type="$backup_type" backup 2>&1 | tee "$LOG_DIR/backup_$backup_type_$TIMESTAMP.log"; then
+    # Capture both stdout and stderr to the log file
+    if pgbackrest --stanza="$STANZA" --type="$backup_type" backup 2>&1 | tee "$backup_log"; then
         local end_time=$(date '+%s')
         local duration=$((end_time - start_time))
         
@@ -90,18 +120,19 @@ perform_backup() {
         else
             log_message "✗ Post-backup checksum verification FAILED"
             
-            # Send failure notification
+            # Send failure notification with checksum log
             {% if notify_on_failure %}
-            send_slack_notification "FAILED" "$backup_type backup completed but checksum verification failed"
+            local checksum_log="$LOG_DIR/checksum_verify_$TIMESTAMP.log"
+            send_slack_notification "FAILED" "$backup_type backup completed but checksum verification failed" "$checksum_log"
             {% endif %}
             return 1
         fi
     else
         log_message "✗ $backup_type backup FAILED"
         
-        # Send failure notification
+        # Send failure notification with backup log
         {% if notify_on_failure %}
-        send_slack_notification "FAILED" "$backup_type backup failed to complete"
+        send_slack_notification "FAILED" "$backup_type backup failed to complete" "$backup_log"
         {% endif %}
         return 1
     fi
@@ -122,6 +153,8 @@ case "$ACTION" in
         ;;
     "verify")
         log_message "=== Starting checksum verification only ==="
+        local verify_log="$LOG_DIR/checksum_verify_$TIMESTAMP.log"
+        
         if verify_checksums; then
             log_message "=== Checksum verification completed successfully ==="
             {% if notify_on_success %}
@@ -131,7 +164,7 @@ case "$ACTION" in
         else
             log_message "=== Checksum verification FAILED ==="
             {% if notify_on_failure %}
-            send_slack_notification "FAILED" "Scheduled checksum verification failed"
+            send_slack_notification "FAILED" "Scheduled checksum verification failed" "$verify_log"
             {% endif %}
             exit 1
         fi
