@@ -1,10 +1,16 @@
 ---
-- name: Configure pg_hba.conf for allowed networks
-  lineinfile:
-    path: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
-    line: "host    all             all             {{ item }}              trust"
-    state: present
-  loop: "{{ pg_allowed_networks }}"
+- name: Configure pg_hba.conf using template
+  template:
+    src: pg_hba.conf.j2
+    dest: "/etc/postgresql/{{ postgres_version }}/main/pg_hba.conf"
+    owner: postgres
+    group: postgres
+    mode: '0640'
+    backup: yes
+
+
+
+
 
 
 - name: Restart PostgreSQL
