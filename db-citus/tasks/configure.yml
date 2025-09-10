@@ -9,9 +9,12 @@
     backup: yes
 
 
-
-
-
+- name: Set wal_level to logical in postgresql.conf
+  lineinfile:
+    path: "/etc/postgresql/{{ postgres_version }}/main/postgresql.conf"
+    regexp: '^#?wal_level\s*='
+    line: 'wal_level = logical'
+    backup: yes
 
 - name: Restart PostgreSQL
   service:
